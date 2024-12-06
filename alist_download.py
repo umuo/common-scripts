@@ -5,6 +5,7 @@ import requests
 import hashlib
 import json
 import os
+import time
 from tqdm import tqdm
 
 # ########## 手动配置项 start #######
@@ -103,15 +104,9 @@ def download_files(path, password="", page=1, per_page=0, refresh=False):
 
 
 # 下载单个文件
-def download_file(remote_file_path, download_item_path, sign):
-    # 获取文件内容
-    data = {
-        "path": remote_file_path,
-        "password": "",
-        "page": 1,
-        "per_page": 0,
-        "refresh": False
-    }
+def download_file(remote_file_path, download_item_path, sign, retry=3):
+    if retry == 0:  # 如果重试次数用完
+        return
     print(remote_file_path, download_item_path, sign)
     if os.path.exists(download_item_path):
         print(f"{download_item_path} 已存在，跳过下载")
@@ -133,7 +128,11 @@ def download_file(remote_file_path, download_item_path, sign):
                     bar.update(len(chunk))  # 更新进度条
         print(f"已下载: {download_item_path}")
     else:
-        print(f"文件下载失败: {file_url}")
+        print(f"文件下载失败: {file_url}, 状态码: {file_response.status_code}")
+        time.sleep(1)
+        # 再次尝试下载
+        retry -= 1
+        download_file(remote_file_path, download_item_path, sign, retry)
 
 
 if __name__ == '__main__':
