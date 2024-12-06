@@ -113,6 +113,9 @@ def download_file(remote_file_path, download_item_path, sign):
         "refresh": False
     }
     print(remote_file_path, download_item_path, sign)
+    if os.path.exists(download_item_path):
+        print(f"{download_item_path} 已存在，跳过下载")
+        return
 
     # 发送GET请求下载文件
     file_url = f"{url_dic['downFile']}{remote_file_path}?sign={sign}"
