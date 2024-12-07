@@ -61,22 +61,50 @@ def generate_new_paths(file_paths, context_name):
     :param context_name: 当前目录名（影视名称）
     :return: 一个字典，{原路径: 新路径}
     """
+    movie_dir_name = "电影"
+    tv_dir_name = "电视剧"
+    anime_dir_name = "动漫"
     prompt = f"""
-    我有以下影视文件，存放在一个叫 '{context_name}' 的目录下。请帮我根据 Emby 的命名规范生成新文件的绝对路径。Emby 的命名规则如下：
-    1. 如果是电影，格式为 `电影目录/Title (Year).ext`
-    2. 如果是电视剧，格式为 `电视剧目录/Title/Season xx/Title - SxxExx.ext`
-    3. 如果是动漫，格式为 `动漫目录/Title/Season xx/Title - Ep xx.ext`
-    
-    以下是文件列表：
-    {file_paths}
+我有一个名为 '{context_name}' 的影视资源目录，里面存放着电影、电视剧和动漫。请根据以下 Emby 命名规范，为每个文件生成符合规范的新文件绝对路径。
 
-    返回一个 JSON 格式的字典，格式如下：
-    {{
-        "旧文件绝对路径": "新文件绝对路径",
-        ...
-    }}
-    不要有多余的字符,我要使用eval转换成python字典的
-    """
+**Emby 命名规范：**
+
+*   **电影：**
+    *   格式：`电影目录/电影名称 (年份).扩展名`
+    *   电影目录名称：`{movie_dir_name}` (默认为"电影")
+    *   电影名称和年份之间用空格和半角括号分隔。
+    *   如果文件名中已包含年份，请尽量使用原有年份。
+    *   如果存在多个版本（如导演剪辑版），请在年份后添加版本信息，例如：`电影名称 (年份) 导演剪辑版.扩展名`
+*   **电视剧：**
+    *   格式：`电视剧目录/剧集名称/Season 季号/剧集名称 - S季号E集号 - 集标题(可选).扩展名`
+    *   电视剧目录名称：`{tv_dir_name}` (默认为"电视剧")
+    *   季号和集号必须为两位数，不足两位前面补零。例如：`S01E01`
+    *   剧集名称、季号、集号之间用空格和半角短横线 `-` 分隔。
+    *   如果文件名中已包含季号和集号，请尽量使用原有信息。
+    *   特殊剧集（如SP、OVA）放在 `Specials` 文件夹中，并使用 `S00E集号` 的格式。
+*   **动漫：**
+    *   格式：`动漫目录/动漫名称/Season 季号/动漫名称 - Ep 集号.扩展名`
+    *   动漫目录名称：`{anime_dir_name}` (默认为"动漫")
+    *   季号为两位数，不足两位前面补零。集号可以是一位或多位。
+    *   动漫名称、季号、集号之间用空格和半角短横线 `-` 分隔。
+    *   如果文件名中已包含季号和集号，请尽量使用原有信息。
+    *   特殊剧集（如SP、OVA）放在 `Specials` 文件夹中，并使用 `Ep 特殊集号` 的格式,例如：`Ep01`。
+
+**文件列表：**
+
+{file_paths}
+
+**要求：**
+
+1. 请根据文件路径和名称，推断其属于电影、电视剧还是动漫。
+2. 如果`{context_name}`下还有子文件夹，请递归的向下遍历。
+3. 返回一个 **纯净的** JSON 格式字典，**不要包含任何其他字符**，例如说明文字、换行符等。字典格式如下：
+
+{{
+    "旧文件绝对路径": "新文件绝对路径",
+    ...
+}}
+"""
     print(file_paths)
     try:
         response = client.chat.completions.create(
@@ -97,9 +125,9 @@ def rename_files(file_map):
     """
     for old_path, new_path in file_map.items():
         new_dir = os.path.dirname(new_path)
-        os.makedirs(new_dir, exist_ok=True)  # 确保新目录存在
+        # os.makedirs(new_dir, exist_ok=True)  # 确保新目录存在
         try:
-            os.rename(old_path, new_path)
+            # os.rename(old_path, new_path)
             print(f"重命名成功: {old_path} -> {new_path}")
         except Exception as e:
             print(f"重命名失败: {old_path} -> {new_path}, 错误: {e}")
