@@ -61,7 +61,7 @@ def convert_pdf_to_image_with_pdftocairo(pdf_path, dpi=300, image_format='png', 
 
     # 执行命令
     try:
-        subprocess.run(command, check=True, capture_output=True, text=True)
+        subprocess.run(command, check=True, text=True)
         print(f"PDF converted to images successfully using pdftocairo. Output in {output_folder}")
         print("pdftocairo stdout:", subprocess.run(command, capture_output=True, text=True).stdout)
         print("pdftocairo stderr:", subprocess.run(command, capture_output=True, text=True).stderr)
