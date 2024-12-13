@@ -129,7 +129,7 @@ def download_file(remote_file_path, download_item_path, sign, retry=3):
         print(f"已下载: {download_item_path}")
     else:
         print(f"文件下载失败: {file_url}, 状态码: {file_response.status_code}")
-        time.sleep(1)
+        time.sleep(60)
         # 再次尝试下载
         retry -= 1
         download_file(remote_file_path, download_item_path, sign, retry)
