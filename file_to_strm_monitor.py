@@ -380,9 +380,7 @@ def main():
         # 扫描完成后通知Emby
         emby_url = "http://192.168.0.210:8096"
         api_key = "1aeb2181561440a796ff1649c591a825"
-        notify_emby_scan(emby_url, api_key, "电视剧")
-        notify_emby_scan(emby_url, api_key, "动漫")
-        notify_emby_scan(emby_url, api_key, "电影")
+        notify_emby_scan(emby_url, api_key)
     
     # 如果指定了不监控，则直接返回
     if args.no_monitor:
