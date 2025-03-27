@@ -73,7 +73,11 @@ class CloudDriveHandler(FileSystemEventHandler):
         file_path = event.src_path
         
         # 检查文件扩展名，只处理视频文件
-        video_extensions = ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.m4v', '.3gp']
+        video_extensions = [
+            '.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.m4v', '.3gp',
+            '.ts', '.m2ts', '.vob', '.mpg', '.mpeg', '.mp2', '.webm', '.asf',
+            '.rm', '.rmvb', '.ogv', '.divx', '.xvid', '.mxf', '.f4v'
+        ]
         file_ext = os.path.splitext(file_path)[1].lower()
         
         if file_ext in video_extensions:
@@ -225,7 +229,11 @@ def scan_existing_files(dir_mappings, db_path):
     """
     handler = CloudDriveHandler(dir_mappings, db_path)
     
-    video_extensions = ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.m4v', '.3gp']
+    video_extensions = [
+        '.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.m4v', '.3gp',
+        '.ts', '.m2ts', '.vob', '.mpg', '.mpeg', '.mp2', '.webm', '.asf',
+        '.rm', '.rmvb', '.ogv', '.divx', '.xvid', '.mxf', '.f4v'
+    ]
     
     for mapping in dir_mappings:
         source_dir = mapping.source_dir
