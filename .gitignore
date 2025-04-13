@@ -1,3 +1,10 @@
 .idea
 .git
 .vscode
+.env
+.env.test
+.env.development
+.env.production
+.env.local
+.env.example
+.env.docker
