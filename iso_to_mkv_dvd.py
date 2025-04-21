@@ -6,7 +6,10 @@ import re
 
 # 可配置指定的iso文件绝对路径，或者配置指定的目录，扫描iso文件
 ISO_ITEM_LIST = [
-    "/Volumes/Nas/emby/qbit_download/动漫/DB/DBZ/龙珠二世 Disc 18 (137-144).ISO"
+    "/Volumes/Nas/emby/qbit_download/动漫/DB/DBZ"
+]
+EXCLUDE_ISO_LIST = [
+    "龙珠二世 Disc 18 (137-144).ISO"
 ]
 # 输出的目录名
 OUTPUT_DIR = "/Volumes/Nas/emby/qbit_download/动漫/DB/db_mkv"  # 替换为输出目录    # 替换为输出目录
@@ -47,7 +50,12 @@ def find_main_vts(mount_path):
     # 收集所有 VOB 文件（排除 VIDEO_TS.VOB 等菜单文件）
     vob_files = []
     for file in os.listdir(video_ts_dir):
-        if file.upper().startswith("VTS_") and file.upper().endswith(".VOB") and not file.upper().startswith("VTS_00"):
+        # VTS_01_8.VOB
+        if (file.upper().startswith("VTS_") and
+                file.upper().endswith(".VOB") and
+                not file.upper().startswith("VTS_00") and
+                #  排除第一个视频文件
+                not file.upper() != 'VTS_00_0.VOB'):
             path = os.path.join(video_ts_dir, file)
             vob_files.append((path, os.path.getsize(path)))
 
@@ -61,44 +69,22 @@ def find_main_vts(mount_path):
 
 
 def convert_with_ffmpeg(input_path, output_dir):
-    """转换 VOB 为 MKV（包含转换后的字幕）"""
+    """转换 VOB 为 MKV（简单模式，转换所有流）"""
     output_name = os.path.splitext(os.path.basename(input_path))[0]
     output_path = os.path.join(output_dir, f"{output_name}.mkv")
     cmd = [
         'ffmpeg',
+        '-fflags', '+genpts',
         '-i', input_path,
-        '-map', '0:v',  # 只映射视频流
-        '-map', '0:a',  # 只映射音频流
-        '-c:v', 'libx264',  # 视频编码
-        '-pix_fmt', 'yuv420p',  # 确保像素格式兼容
-        '-crf', '23',  # 质量参数
-        '-c:a', 'aac',  # 音频编码
-        '-b:a', '192k',  # 音频比特率
-        '-strict', 'experimental',  # 允许实验性编码器
-        '-f', 'matroska',  # 强制使用MKV容器
+        '-map', '0:v',
+        '-map', '0:a',
+        '-map', '0:s?',
+        '-map', '-0:d',
+        '-c', 'copy',  # 完全无损复制
+        '-f', 'matroska',
         '-y',
         output_path
     ]
-    # 检测是否有字幕流
-    probe_cmd = [
-        'ffprobe',
-        '-v', 'error',
-        '-select_streams', 's',
-        '-show_entries', 'stream=codec_type',
-        '-of', 'csv=p=0',
-        input_path
-    ]
-    print("开始检测字幕流...")
-    result = subprocess.run(probe_cmd, capture_output=True, text=True)
-    # 如果有字幕流则添加字幕参数
-    if result.returncode == 0 and result.stdout.strip():
-        cmd.extend([
-            '-map', '0:s',  # 字幕流
-            '-c:s', 'srt'  # 字幕编码
-        ])
-        print("检测到字幕流，添加字幕参数。")
-    else:
-        print("未检测到字幕流。")
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
         print(f"转换失败: {result.stderr}")
@@ -153,10 +139,8 @@ def process_iso(iso_path, output_dir):
             '-f', 'concat',
             '-safe', '0',
             '-i', list_file,
-            '-map', '0:v',            # 映射所有视频流
-            '-map', '0:a',            # 映射所有音频流
-            '-c:v', 'copy',           # 复制视频流
-            '-c:a', 'copy',           # 复制音频流
+            '-map', '0',      # 映射所有流
+            '-c', 'copy',    # 复制所有流
             '-y',
             merged_output
         ]
@@ -191,6 +175,9 @@ if __name__ == '__main__':
         if os.path.isdir(iso_item):
             # 遍历目录中的ISO文件
             for file in os.listdir(iso_item):
+                if file in EXCLUDE_ISO_LIST:
+                    print("跳过: ", file, " 因为在排除列表中")
+                    continue
                 if file.lower().endswith('.iso'):
                     iso_file = os.path.join(iso_item, file)
                     print(f"\n开始处理: {iso_file}")
