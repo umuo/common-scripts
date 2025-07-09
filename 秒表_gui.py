@@ -57,7 +57,7 @@ class Stopwatch:
 
         self.time_label = ttk.Label(
             self.inner_frame,
-            text="00:00:00.0",
+            text="00:00:00.00",
             font=("Helvetica", 12),
             style="Timer.TLabel"
         )
@@ -141,15 +141,16 @@ class Stopwatch:
         if self.running:
             self.elapsed = time.time() - self.start_time
             self.update_label()
-        self.frame.after(100, self.update_loop)
+        self.frame.after(10, self.update_loop)
 
     def update_label(self):
         total_ms = int(self.elapsed * 10)
         hours = total_ms // 36000
         minutes = (total_ms // 600) % 60
         seconds = (total_ms // 10) % 60
-        tenths = total_ms % 10
-        self.time_label.config(text=f"{hours:02}:{minutes:02}:{seconds:02}.{tenths}")
+        # tenths = total_ms % 10
+        milliseconds = int((self.elapsed - int(self.elapsed)) * 100)
+        self.time_label.config(text=f"{hours:02}:{minutes:02}:{seconds:02}.{milliseconds:02}")
 
 
 class StopwatchApp:
