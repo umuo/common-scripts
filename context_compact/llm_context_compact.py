@@ -5,6 +5,8 @@ import os
 from tools import tools, mock_tool_executor
 from token_compute import Token
 import json
+from typing import Dict, List, Any
+
 load_dotenv()
 
 # 预留的输出空间, 32K, 精确值为32768, 保守取值 32000
@@ -31,7 +33,7 @@ class LlmRequest:
     def __init__(self):
         self.client = OpenAI(base_url=os.environ['base_url'], api_key=os.environ['api_key'],
                              http_client=httpx.Client(event_hooks={'request': [log_request]}))
-        self.messages = [
+        self.messages: List[Dict[str, Any]] = [
             {
                 "role": "system",
                 "content": "你是一个乐于助人的助手."
@@ -106,15 +108,14 @@ class LlmRequest:
         if hasattr(self, 'last_usage'):
             print(f"\n(消耗: {self.last_usage['total']} tokens)")
         # 将完整的文本回复存入上下文
-        if full_content:
-            self.messages.append({"role": "assistant", "content": full_content})
-        # 每轮都会进行工具裁剪
-        self.tool_compact()
+        # 构建单条 assistant 消息
+        assistant_message: Dict[str, Any] = {"role": "assistant", "content": full_content}
+        self.messages.append(assistant_message)
         # 如果有工具调用，处理逻辑
         if tool_calls_buffer:
             tool_calls = list(tool_calls_buffer.values())
             # 1. 把 AI 的工具请求存入上下文
-            self.messages.append({"role": "assistant", "tool_calls": tool_calls})
+            assistant_message["tool_calls"] = list(tool_calls_buffer.values())
 
             # 2. 执行 Mock 调用
             tool_results = mock_tool_executor(tool_calls)
@@ -124,6 +125,8 @@ class LlmRequest:
 
             # 4. 再次发起请求，让 AI 根据工具结果说话
             print("AI 思考中...")
+            # 每轮都会进行工具裁剪
+            self.tool_compact()
             self.ask(None)
             return
 
@@ -214,7 +217,8 @@ class LlmRequest:
         )
         print(resp)
         summary = resp.choices[0].message.content
-        self.messages = [self.messages[0], {"role": "user", "content": "What did we do so far?"},
+        self.messages = [self.messages[0],
+                         {"role": "user", "content": "到目前为止，我们做了什么？"},  # What did we do so far?
                          {"role": "assistant", "content": summary}]
         pass
 
