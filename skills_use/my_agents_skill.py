@@ -4,10 +4,22 @@ from deepagents import create_deep_agent
 from langchain.chat_models import init_chat_model
 from langchain_core.tools import tool
 from langchain_core.messages import HumanMessage
+import logging
+import sys
 import os
 import re
 from dotenv import load_dotenv
+
 load_dotenv()
+
+# 1. 配置基础日志
+logging.basicConfig(stream=sys.stdout, level=logging.WARNING)  # 全局设为 WARNING 防止其他库刷屏
+
+# 2. 专门开启 openai 和 httpx 的调试日志
+# 这将打印出: HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+logging.getLogger("openai").setLevel(logging.DEBUG)
+logging.getLogger("httpx").setLevel(logging.DEBUG)
+logging.getLogger("httpcore").setLevel(logging.DEBUG)
 
 # --- 配置部分 ---
 SKILLS_DIR = "./.skills"
@@ -30,10 +42,10 @@ def generate_skill_description(directory: str) -> str:
         os.makedirs(directory)
 
     # 获取文件列表
-    files = [f for f in os.listdir(directory) if not f.startswith('.')]
+    dirs = [f for f in os.listdir(directory) if not f.startswith('.')]
 
     # 逻辑分支 1：没有技能时的描述
-    if not files:
+    if not dirs:
         return "Load a skill to get detailed instructions for a specific task. No skills are currently available."
 
     # 逻辑分支 2：构建 XML 列表
@@ -42,11 +54,14 @@ def generate_skill_description(directory: str) -> str:
     xml_parts = []
     xml_parts.append("<available_skills>")
 
-    for filename in files:
+    for skill_dir in dirs:
         xml_parts.append("  <skill>")
-        xml_parts.append(f"    <name>{filename}</name>")
+        xml_parts.append(f"    <name>{skill_dir}</name>")
+        with open(os.path.join(SKILLS_DIR, skill_dir, "SKILL.md")) as f:
+            content = f.read()
+        meta, _ = parse_frontmatter(content)
         # 简单将文件名作为描述，或者你可以根据文件扩展名做区分
-        xml_parts.append(f"    <description>Contains instructions for {filename}</description>")
+        xml_parts.append(f"    <description>{meta.get('description')}</description>")
         xml_parts.append("  </skill>")
 
     xml_parts.append("</available_skills>")
@@ -139,7 +154,7 @@ def skill(skill_name: str) -> str:
         # --- 构建符合 Plugin Pattern 的输出 ---
         output_parts = [
             f"## Skill: {name}",
-            "",
+            f"**description**: {meta.get('description')}",
             f"**Base directory**: {os.path.abspath(os.path.join(SKILLS_DIR, target_dir_name))}",
             "",
             body.strip()  # 去掉 YAML 头后的正文
@@ -149,6 +164,7 @@ def skill(skill_name: str) -> str:
 
     except Exception as e:
         return f"Error loading skill: {str(e)}"
+
 
 # 【注入描述】
 # 将生成的 XML 描述注入到工具中
@@ -169,13 +185,12 @@ model = init_chat_model(
 )
 agent = create_deep_agent(
     model=model,
-    debug=True,
     tools=[skill]
 )
 
 
 # --- 4. 主循环 ---
-async def main():
+def main():
     print(f"System: Skills loaded from {SKILLS_DIR}")
     print("System: Tool description updated with XML structure.")
     # 打印一下当前的 description 方便调试，确认 XML 结构正确
@@ -194,7 +209,7 @@ async def main():
 
             print("Agent: ", end="", flush=True)
 
-            async for chunk in agent.astream({"messages": chat_history}):
+            for chunk in agent.stream({"messages": chat_history}):
                 # print(chunk)
                 if "model" in chunk:
                     model = chunk["model"]
@@ -214,4 +229,4 @@ async def main():
 
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    main()
